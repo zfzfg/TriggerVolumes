@@ -1,0 +1,20 @@
+name: TriggerVolumes
+version: ${project.version}
+main: de.zfzfg.triggervolumes.TriggerVolumesPlugin
+api-version: '1.20'
+author: zfzfg
+description: A plugin for defining 3D trigger volumes with automated actions on player entry
+
+commands:
+  trigger:
+    description: Main command for TriggerVolumes plugin
+    usage: /<command> <subcommand> [args]
+    aliases: [tv, triggervolume]
+
+permissions:
+  triggervolumes.admin:
+    description: Allows creating, editing, and deleting trigger volumes
+    default: op
+  triggervolumes.use:
+    description: Allows triggering actions in volumes
+    default: true

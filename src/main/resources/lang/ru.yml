@@ -1,0 +1,21 @@
+# Russian Language File for TriggerVolumes
+# Автор: zfzfg
+
+prefix: "&8[&6TriggerVolumes&8] "
+no-permission: "&cУ вас нет прав для этого!"
+pos1-set: "&aПозиция 1 установлена в &e%x%, %y%, %z%"
+pos2-set: "&aПозиция 2 установлена в &e%x%, %y%, %z%"
+volume-created: "&aОбъём &e%name% &aуспешно создан!"
+volume-deleted: "&aОбъём &e%name% &aудалён!"
+volume-not-found: "&cОбъём &e%name% &cне найден!"
+volume-already-exists: "&cОбъём с именем &e%name% &cуже существует!"
+no-selection: "&cСначала нужно выбрать две точки!"
+selection-cleared: "&7Выбор очищен."
+action-set: "&aДействие %trigger% установлено для объёма &e%name%&a!"
+enter-action-set: "&aДействие входа установлено для объёма &e%name%&a!"
+leave-action-set: "&aДействие выхода установлено для объёма &e%name%&a!"
+actions-cleared: "&aДействия %type% удалены из объёма &e%name%&a!"
+tool-given: "&aИнструмент выбора получен! Левый клик для pos1, правый клик для pos2."
+plugin-reloaded: "&aПлагин успешно перезагружен!"
+config-reloaded: "&aКонфигурация перезагружена!"
+player-only: "&cЭта команда может использоваться только игроками!"

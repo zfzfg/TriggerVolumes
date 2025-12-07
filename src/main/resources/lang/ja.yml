@@ -1,0 +1,21 @@
+# Japanese Language File for TriggerVolumes
+# 著者: zfzfg
+
+prefix: "&8[&6TriggerVolumes&8] "
+no-permission: "&cこれを行う権限がありません！"
+pos1-set: "&a位置1を &e%x%, %y%, %z% &aに設定しました"
+pos2-set: "&a位置2を &e%x%, %y%, %z% &aに設定しました"
+volume-created: "&aボリューム &e%name% &aを正常に作成しました！"
+volume-deleted: "&aボリューム &e%name% &aを削除しました！"
+volume-not-found: "&cボリューム &e%name% &cが見つかりません！"
+volume-already-exists: "&c名前 &e%name% &cのボリュームは既に存在します！"
+no-selection: "&c最初に2つのポイントを選択する必要があります！"
+selection-cleared: "&7選択がクリアされました。"
+action-set: "&aボリューム &e%name% &aの%trigger%アクションを設定しました！"
+enter-action-set: "&aボリューム &e%name% &aの入場アクションを設定しました！"
+leave-action-set: "&aボリューム &e%name% &aの退場アクションを設定しました！"
+actions-cleared: "&aボリューム &e%name% &aの%type%アクションを削除しました！"
+tool-given: "&a選択ツールを受け取りました！左クリックでpos1、右クリックでpos2を設定します。"
+plugin-reloaded: "&aプラグインが正常にリロードされました！"
+config-reloaded: "&a設定がリロードされました！"
+player-only: "&cこのコマンドはプレイヤーのみ使用できます！"

@@ -1,0 +1,21 @@
+# German Language File for TriggerVolumes
+# Autor: zfzfg
+
+prefix: "&8[&6TriggerVolumes&8] "
+no-permission: "&cDu hast keine Berechtigung dafür!"
+pos1-set: "&aPosition 1 gesetzt bei &e%x%, %y%, %z%"
+pos2-set: "&aPosition 2 gesetzt bei &e%x%, %y%, %z%"
+volume-created: "&aVolume &e%name% &aerfolgreich erstellt!"
+volume-deleted: "&aVolume &e%name% &agelöscht!"
+volume-not-found: "&cVolume &e%name% &cnicht gefunden!"
+volume-already-exists: "&cEin Volume mit dem Namen &e%name% &cexistiert bereits!"
+no-selection: "&cDu musst zuerst zwei Punkte auswählen!"
+selection-cleared: "&7Auswahl gelöscht."
+action-set: "&a%trigger%-Aktion für Volume &e%name% &agesetzt!"
+enter-action-set: "&aBetreten-Aktion für Volume &e%name% &agesetzt!"
+leave-action-set: "&aVerlassen-Aktion für Volume &e%name% &agesetzt!"
+actions-cleared: "&a%type% Aktionen von Volume &e%name% &agelöscht!"
+tool-given: "&aAuswahl-Werkzeug erhalten! Linksklick für Pos1, Rechtsklick für Pos2."
+plugin-reloaded: "&aPlugin erfolgreich neu geladen!"
+config-reloaded: "&aKonfiguration neu geladen!"
+player-only: "&cDieser Befehl kann nur von Spielern verwendet werden!"

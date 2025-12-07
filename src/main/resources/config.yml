@@ -1,0 +1,46 @@
+# TriggerVolumes Configuration
+
+# Language settings
+language:
+  # Available languages: en, de, fr, pl, ru, ja, es
+  # en = English, de = German, fr = French, pl = Polish
+  # ru = Russian, ja = Japanese, es = Spanish
+  default: en
+
+# Particle settings
+particles:
+  # Interval in ticks for particle updates (20 ticks = 1 second)
+  update-interval: 5
+  # Particle density (distance between particles along edges)
+  density: 0.5
+  # Duration in seconds for visualization before auto-hide
+  visualization-duration: 30
+
+# Cooldown settings
+cooldowns:
+  # Enable cooldown system
+  enabled: false
+  # Default cooldown in seconds between trigger activations
+  default-cooldown: 3
+
+# Selection tool
+selection-tool:
+  # Material for the selection tool
+  material: WOODEN_HOE
+  # Display name for the selection tool
+  name: "&6Selection Tool"
+
+# Messages
+messages:
+  prefix: "&8[&6TriggerVolumes&8] "
+  no-permission: "&cYou don't have permission to do this!"
+  pos1-set: "&aPosition 1 set at &e%x%, %y%, %z%"
+  pos2-set: "&aPosition 2 set at &e%x%, %y%, %z%"
+  volume-created: "&aVolume &e%name% &acreated successfully!"
+  volume-deleted: "&aVolume &e%name% &adeleted!"
+  volume-not-found: "&cVolume &e%name% &cnot found!"
+  volume-already-exists: "&cA volume with name &e%name% &calready exists!"
+  no-selection: "&cYou need to select two points first!"
+  selection-cleared: "&7Selection cleared."
+  action-set: "&aAction set for volume &e%name%&a!"
+  tool-given: "&aSelection Tool given! Left-click to set pos1, right-click to set pos2."
