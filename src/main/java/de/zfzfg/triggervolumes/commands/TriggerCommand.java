@@ -84,6 +84,10 @@ public class TriggerCommand implements CommandExecutor {
                 return handleCreateGroup(sender, args);
             case "deletegroup":
                 return handleDeleteGroup(sender, args);
+            case "groupadd":
+                return handleGroupAdd(sender, args);
+            case "groupremove":
+                return handleGroupRemove(sender, args);
             case "reload":
                 return handleReload(sender);
             case "help":
@@ -887,6 +891,103 @@ public class TriggerCommand implements CommandExecutor {
     }
 
     /**
+     * Handles the /trigger groupadd <groupName> <volumeName> command.
+     * Adds a volume to an existing group.
+     * 
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if successful
+     */
+    private boolean handleGroupAdd(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("triggervolumes.admin")) {
+            sender.sendMessage(getMessage("no-permission"));
+            return true;
+        }
+
+        if (args.length < 3) {
+            sender.sendMessage(ChatColor.RED + "Usage: /trigger groupadd <groupName> <volumeName>");
+            return true;
+        }
+
+        String groupName = args[1];
+        String volumeName = args[2];
+
+        if (!plugin.getVolumeManager().groupExists(groupName)) {
+            sender.sendMessage(getMessage("group-not-found").replace("%name%", groupName));
+            return true;
+        }
+
+        if (!plugin.getVolumeManager().volumeExists(volumeName)) {
+            sender.sendMessage(getMessage("volume-not-found").replace("%name%", volumeName));
+            return true;
+        }
+
+        boolean success = plugin.getVolumeManager().addVolumeToGroup(groupName, volumeName);
+
+        if (success) {
+            sender.sendMessage(getMessage("volume-added-to-group")
+                    .replace("%volume%", volumeName)
+                    .replace("%group%", groupName));
+        } else {
+            sender.sendMessage(getMessage("volume-already-in-group")
+                    .replace("%volume%", volumeName)
+                    .replace("%group%", groupName));
+        }
+
+        return true;
+    }
+
+    /**
+     * Handles the /trigger groupremove <groupName> <volumeName> command.
+     * Removes a volume from a group.
+     * 
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if successful
+     */
+    private boolean handleGroupRemove(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("triggervolumes.admin")) {
+            sender.sendMessage(getMessage("no-permission"));
+            return true;
+        }
+
+        if (args.length < 3) {
+            sender.sendMessage(ChatColor.RED + "Usage: /trigger groupremove <groupName> <volumeName>");
+            return true;
+        }
+
+        String groupName = args[1];
+        String volumeName = args[2];
+
+        if (!plugin.getVolumeManager().groupExists(groupName)) {
+            sender.sendMessage(getMessage("group-not-found").replace("%name%", groupName));
+            return true;
+        }
+
+        boolean success = plugin.getVolumeManager().removeVolumeFromGroup(groupName, volumeName);
+
+        if (success) {
+            VolumeGroup group = plugin.getVolumeManager().getGroup(groupName);
+            if (group == null) {
+                // Group was deleted because it had less than 2 volumes
+                sender.sendMessage(getMessage("volume-removed-from-group-deleted")
+                        .replace("%volume%", volumeName)
+                        .replace("%group%", groupName));
+            } else {
+                sender.sendMessage(getMessage("volume-removed-from-group")
+                        .replace("%volume%", volumeName)
+                        .replace("%group%", groupName));
+            }
+        } else {
+            sender.sendMessage(getMessage("volume-not-in-group")
+                    .replace("%volume%", volumeName)
+                    .replace("%group%", groupName));
+        }
+
+        return true;
+    }
+
+    /**
      * Handles the /trigger reload command.
      * Reloads the plugin configuration and language files.
      * 
@@ -938,6 +1039,8 @@ public class TriggerCommand implements CommandExecutor {
         sender.sendMessage(ChatColor.YELLOW + "/trigger clearactions <name|group> [enter|leave|all]" + ChatColor.GRAY + " - Clear actions");
         sender.sendMessage(ChatColor.YELLOW + "/trigger creategroup <groupName> <vol1> <vol2> ..." + ChatColor.GRAY + " - Create volume group");
         sender.sendMessage(ChatColor.YELLOW + "/trigger deletegroup <groupName>" + ChatColor.GRAY + " - Delete volume group");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger groupadd <groupName> <volumeName>" + ChatColor.GRAY + " - Add volume to group");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger groupremove <groupName> <volumeName>" + ChatColor.GRAY + " - Remove volume from group");
         sender.sendMessage(ChatColor.YELLOW + "/trigger visualize <name>" + ChatColor.GRAY + " - Show volume particles");
         sender.sendMessage(ChatColor.YELLOW + "/trigger hide <name>" + ChatColor.GRAY + " - Hide volume particles");
         sender.sendMessage(ChatColor.YELLOW + "/trigger reload" + ChatColor.GRAY + " - Reload plugin configuration");

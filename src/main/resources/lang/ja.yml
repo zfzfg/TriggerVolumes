@@ -29,3 +29,8 @@ actions-cloned: "&7%enter%個の入場アクションと%leave%個の退場ア�
 volume-created-from-selection: "&a選択範囲からボリューム &e%name% &aを作成しました！"
 actions-copied: "&aアクションを &e%source% &aから &e%target% &aにコピーしました！"
 volume-already-exists-error: "&cボリューム &e%name% &cは既に存在します！"
+volume-added-to-group: "&aボリューム &e%volume% &aをグループ &e%group% &aに追加しました！"
+volume-removed-from-group: "&aボリューム &e%volume% &aをグループ &e%group% &aから削除しました！"
+volume-removed-from-group-deleted: "&aボリューム &e%volume% &aをグループ &e%group% &aから削除しました。グループが削除されました（2つ未満のボリューム）。"
+volume-already-in-group: "&cボリューム &e%volume% &cは既にグループ &e%group% &cに存在します！"
+volume-not-in-group: "&cボリューム &e%volume% &cはグループ &e%group% &cに存在しません！"

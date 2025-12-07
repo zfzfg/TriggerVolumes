@@ -24,7 +24,8 @@ public class TriggerTabCompleter implements TabCompleter {
     private static final List<String> SUBCOMMANDS = Arrays.asList(
             "tool", "create", "define", "delete", "list", "info",
             "setaction", "clearactions", "visualize", "show", "hide",
-            "clone", "copypaste", "creategroup", "deletegroup", "reload", "help"
+            "clone", "copypaste", "creategroup", "deletegroup", 
+            "groupadd", "groupremove", "reload", "help"
     );
 
     private static final List<String> TRIGGER_TYPES = Arrays.asList("enter", "leave");
@@ -115,6 +116,13 @@ public class TriggerTabCompleter implements TabCompleter {
                             .filter(s -> s.startsWith(partial))
                             .collect(Collectors.toList());
                     break;
+                case "groupadd":
+                case "groupremove":
+                    // Complete with group names
+                    completions = plugin.getVolumeManager().getGroupNames().stream()
+                            .filter(s -> s.startsWith(partial))
+                            .collect(Collectors.toList());
+                    break;
                 case "creategroup":
                     // Suggest a default name
                     completions.add("<groupName>");
@@ -143,6 +151,12 @@ public class TriggerTabCompleter implements TabCompleter {
                 completions.add("<targetName>");
             } else if (subCommand.equals("copypaste")) {
                 // Complete with volume names for paste target
+                String partial = args[2].toLowerCase();
+                completions = plugin.getVolumeManager().getVolumeNames().stream()
+                        .filter(s -> s.startsWith(partial))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("groupadd") || subCommand.equals("groupremove")) {
+                // Complete with volume names
                 String partial = args[2].toLowerCase();
                 completions = plugin.getVolumeManager().getVolumeNames().stream()
                         .filter(s -> s.startsWith(partial))

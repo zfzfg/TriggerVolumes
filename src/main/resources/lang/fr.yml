@@ -29,3 +29,8 @@ actions-cloned: "&7Copié %enter% actions d'entrée et %leave% actions de sortie
 volume-created-from-selection: "&aVolume &e%name% &acréé à partir de la sélection!"
 actions-copied: "&aActions copiées de &e%source% &avers &e%target%&a!"
 volume-already-exists-error: "&cLe volume &e%name% &cexiste déjà!"
+volume-added-to-group: "&aVolume &e%volume% &aajouté au groupe &e%group%&a!"
+volume-removed-from-group: "&aVolume &e%volume% &aretiré du groupe &e%group%&a!"
+volume-removed-from-group-deleted: "&aVolume &e%volume% &aretiré du groupe &e%group%&a. Groupe supprimé (moins de 2 volumes)."
+volume-already-in-group: "&cLe volume &e%volume% &cest déjà dans le groupe &e%group%&c!"
+volume-not-in-group: "&cLe volume &e%volume% &cn'est pas dans le groupe &e%group%&c!"

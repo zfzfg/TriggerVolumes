@@ -547,6 +547,62 @@ public class TriggerVolumeManager {
     }
 
     /**
+     * Adds a volume to an existing group.
+     * 
+     * @param groupName The name of the group
+     * @param volumeName The name of the volume to add
+     * @return True if added successfully, false if group doesn't exist, volume doesn't exist, or volume already in group
+     */
+    public boolean addVolumeToGroup(String groupName, String volumeName) {
+        String key = groupName.toLowerCase();
+        if (!groups.containsKey(key)) {
+            return false;
+        }
+        
+        if (!volumeExists(volumeName)) {
+            return false;
+        }
+        
+        VolumeGroup group = groups.get(key);
+        if (group.containsVolume(volumeName)) {
+            return false; // Already in group
+        }
+        
+        group.addVolume(volumeName);
+        saveVolumes();
+        return true;
+    }
+
+    /**
+     * Removes a volume from a group.
+     * 
+     * @param groupName The name of the group
+     * @param volumeName The name of the volume to remove
+     * @return True if removed successfully, false if group doesn't exist or volume not in group
+     */
+    public boolean removeVolumeFromGroup(String groupName, String volumeName) {
+        String key = groupName.toLowerCase();
+        if (!groups.containsKey(key)) {
+            return false;
+        }
+        
+        VolumeGroup group = groups.get(key);
+        if (!group.containsVolume(volumeName)) {
+            return false; // Not in group
+        }
+        
+        group.removeVolume(volumeName);
+        
+        // Delete group if it has less than 2 volumes
+        if (group.getVolumeNames().size() < 2) {
+            groups.remove(key);
+        }
+        
+        saveVolumes();
+        return true;
+    }
+
+    /**
      * Gets all group names.
      * 
      * @return Set of all group names

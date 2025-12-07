@@ -29,3 +29,8 @@ actions-cloned: "&7Скопировано %enter% действий входа и
 volume-created-from-selection: "&aОбъём &e%name% &aсоздан из выделения!"
 actions-copied: "&aДействия скопированы из &e%source% &aв &e%target%&a!"
 volume-already-exists-error: "&cОбъём &e%name% &cуже существует!"
+volume-added-to-group: "&aОбъём &e%volume% &aдобавлен в группу &e%group%&a!"
+volume-removed-from-group: "&aОбъём &e%volume% &aудалён из группы &e%group%&a!"
+volume-removed-from-group-deleted: "&aОбъём &e%volume% &aудалён из группы &e%group%&a. Группа удалена (менее 2 объёмов)."
+volume-already-in-group: "&cОбъём &e%volume% &cуже находится в группе &e%group%&c!"
+volume-not-in-group: "&cОбъём &e%volume% &cне находится в группе &e%group%&c!"

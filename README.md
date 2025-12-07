@@ -105,6 +105,8 @@ Then reload: `/trigger reload`
 |---------|-------------|------------|
 | `/trigger creategroup <name> <vol1> <vol2> [...]` | Create volume group (min 2) | `triggervolumes.admin` |
 | `/trigger deletegroup <name>` | Delete group (volumes remain) | `triggervolumes.admin` |
+| `/trigger groupadd <group> <volume>` | Add volume to existing group | `triggervolumes.admin` |
+| `/trigger groupremove <group> <volume>` | Remove volume from group | `triggervolumes.admin` |
 | `/trigger setaction <group> <trigger> <type> <value>` | Apply action to all volumes in group | `triggervolumes.admin` |
 | `/trigger clearactions <group> [enter\|leave\|all]` | Clear actions from group | `triggervolumes.admin` |
 
@@ -349,16 +351,24 @@ Manage multiple volumes as a group:
 # Create a group of shop volumes
 /trigger creategroup AllShops Shop1 Shop2 Shop3
 
+# Add more volumes to the group later
+/trigger groupadd AllShops Shop4
+/trigger groupadd AllShops Shop5
+
 # Apply actions to all volumes in the group at once
 /trigger setaction AllShops enter MESSAGE &6Welcome to the shop!
 /trigger setaction AllShops enter CONSOLE_COMMAND effect give %player% glowing 10
 /trigger setaction AllShops leave MESSAGE &7Thanks for visiting!
+
+# Remove a volume from the group
+/trigger groupremove AllShops Shop1
 
 # Clear actions from all volumes in group
 /trigger clearactions AllShops all
 
 # Delete the group (volumes remain intact)
 /trigger deletegroup AllShops
+# Note: If a group has less than 2 volumes after removal, it's automatically deleted
 ```
 
 ## Permissions
@@ -511,6 +521,12 @@ Groups can be used wherever you would use a volume name:
 
 ### Managing Groups
 ```bash
+# Add a volume to an existing group
+/trigger groupadd MyGroup NewVolume
+
+# Remove a volume from a group
+/trigger groupremove MyGroup OldVolume
+
 # View which groups a volume belongs to
 /trigger info Volume1
 # Shows: "Groups: MyGroup, AnotherGroup"
@@ -518,6 +534,12 @@ Groups can be used wherever you would use a volume name:
 # Delete a group (volumes are not deleted)
 /trigger deletegroup MyGroup
 ```
+
+**Important Notes:**
+- Groups require a minimum of 2 volumes
+- When removing a volume leaves less than 2 volumes, the group is automatically deleted
+- A volume can belong to multiple groups simultaneously
+- Removing a volume from a group doesn't delete the volume itself
 
 ### Key Features
 - **Batch Operations**: Apply actions to multiple volumes simultaneously
@@ -654,6 +676,28 @@ Use groups to organize related volumes:
 
 # Apply consistent actions across related areas
 /trigger setaction SpawnZones enter MESSAGE &aYou are now in spawn!
+```
+
+### Dynamic Group Management
+Groups can be modified after creation:
+```bash
+# Create initial group
+/trigger creategroup ActiveShops Shop1 Shop2
+
+# Add new shops as they're built
+/trigger groupadd ActiveShops Shop3
+/trigger groupadd ActiveShops Shop4
+
+# Remove shops temporarily (e.g., during renovation)
+/trigger groupremove ActiveShops Shop2
+
+# Add them back when ready
+/trigger groupadd ActiveShops Shop2
+
+# If you remove volumes until less than 2 remain, the group auto-deletes
+/trigger groupremove ActiveShops Shop1  # Group still exists (3 volumes)
+/trigger groupremove ActiveShops Shop3  # Group still exists (2 volumes)
+/trigger groupremove ActiveShops Shop4  # Group auto-deleted (would have 1 volume)
 ```
 
 ### Clone vs CopyPaste
