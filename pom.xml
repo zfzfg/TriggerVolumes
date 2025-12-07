@@ -6,7 +6,7 @@
 
     <groupId>de.zfzfg</groupId>
     <artifactId>TriggerVolumes</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.4</version>
     <packaging>jar</packaging>
 
     <name>TriggerVolumes</name>

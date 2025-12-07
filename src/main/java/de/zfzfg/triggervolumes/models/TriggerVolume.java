@@ -218,6 +218,8 @@ public class TriggerVolume {
 
     /**
      * Checks if a location is inside this trigger volume.
+     * Uses block coordinates to match the visual representation.
+     * A block extends from X.0 to X.999, so we add 1 to max coordinates.
      * 
      * @param location The location to check
      * @return True if the location is inside the volume
@@ -235,9 +237,11 @@ public class TriggerVolume {
         double y = location.getY();
         double z = location.getZ();
         
-        return x >= minX && x <= maxX &&
-               y >= minY && y <= maxY &&
-               z >= minZ && z <= maxZ;
+        // Add 1 to max coordinates to match block boundaries
+        // This ensures the trigger area matches the particle visualization
+        return x >= minX && x < maxX + 1 &&
+               y >= minY && y < maxY + 1 &&
+               z >= minZ && z < maxZ + 1;
     }
 
     /**

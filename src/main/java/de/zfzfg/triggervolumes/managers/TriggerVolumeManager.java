@@ -4,6 +4,7 @@ import de.zfzfg.triggervolumes.TriggerVolumesPlugin;
 import de.zfzfg.triggervolumes.models.ActionType;
 import de.zfzfg.triggervolumes.models.TriggerAction;
 import de.zfzfg.triggervolumes.models.TriggerVolume;
+import de.zfzfg.triggervolumes.models.VolumeGroup;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -15,6 +16,7 @@ import java.util.*;
 
 /**
  * Manages all trigger volumes including loading, saving, and CRUD operations.
+ * Also manages volume groups for batch operations.
  * 
  * @author zfzfg
  */
@@ -22,8 +24,13 @@ public class TriggerVolumeManager {
 
     private final TriggerVolumesPlugin plugin;
     private final Map<String, TriggerVolume> volumes;
+    private final Map<String, VolumeGroup> groups;
     private final File volumesFile;
     private FileConfiguration volumesConfig;
+    
+    // Spatial hashing for performance optimization
+    private final Map<String, Map<Long, List<TriggerVolume>>> spatialHash;
+    private static final int CHUNK_SIZE = 16; // Minecraft chunk size
 
     /**
      * Creates a new TriggerVolumeManager.
@@ -33,6 +40,8 @@ public class TriggerVolumeManager {
     public TriggerVolumeManager(TriggerVolumesPlugin plugin) {
         this.plugin = plugin;
         this.volumes = new HashMap<>();
+        this.groups = new HashMap<>();
+        this.spatialHash = new HashMap<>();
         this.volumesFile = new File(plugin.getDataFolder(), "triggervolumes.yml");
     }
 
@@ -126,7 +135,21 @@ public class TriggerVolumeManager {
             volumes.put(name.toLowerCase(), volume);
         }
         
-        plugin.getLogger().info("Loaded " + volumes.size() + " trigger volumes.");
+        // Load groups
+        ConfigurationSection groupsSection = volumesConfig.getConfigurationSection("groups");
+        if (groupsSection != null) {
+            for (String groupName : groupsSection.getKeys(false)) {
+                List<String> volumeNames = groupsSection.getStringList(groupName);
+                if (volumeNames != null && !volumeNames.isEmpty()) {
+                    groups.put(groupName.toLowerCase(), new VolumeGroup(groupName, volumeNames));
+                }
+            }
+        }
+        
+        // Rebuild spatial hash after loading
+        rebuildSpatialHash();
+        
+        plugin.getLogger().info("Loaded " + volumes.size() + " trigger volumes and " + groups.size() + " groups.");
     }
 
     /**
@@ -169,6 +192,12 @@ public class TriggerVolumeManager {
             }
         }
         
+        // Save groups
+        ConfigurationSection groupsSection = volumesConfig.createSection("groups");
+        for (VolumeGroup group : groups.values()) {
+            groupsSection.set(group.getName(), group.getVolumeNames());
+        }
+        
         try {
             volumesConfig.save(volumesFile);
         } catch (IOException e) {
@@ -198,6 +227,7 @@ public class TriggerVolumeManager {
         
         TriggerVolume volume = new TriggerVolume(name, worldName, x1, y1, z1, x2, y2, z2);
         volumes.put(key, volume);
+        rebuildSpatialHash(); // Update spatial hash
         saveVolumes();
         return true;
     }
@@ -215,6 +245,7 @@ public class TriggerVolumeManager {
         }
         
         volumes.remove(key);
+        rebuildSpatialHash(); // Update spatial hash
         saveVolumes();
         return true;
     }
@@ -259,18 +290,80 @@ public class TriggerVolumeManager {
 
     /**
      * Gets all volumes that contain the given location.
+     * Uses spatial hashing for improved performance with many volumes.
      * 
      * @param location The location to check
      * @return List of volumes containing the location
      */
     public List<TriggerVolume> getVolumesAtLocation(Location location) {
         List<TriggerVolume> result = new ArrayList<>();
-        for (TriggerVolume volume : volumes.values()) {
+        
+        if (location == null || location.getWorld() == null) {
+            return result;
+        }
+        
+        String worldName = location.getWorld().getName();
+        Map<Long, List<TriggerVolume>> worldHash = spatialHash.get(worldName);
+        
+        if (worldHash == null) {
+            return result;
+        }
+        
+        // Get chunk hash for the location
+        long chunkHash = getChunkHash(location);
+        List<TriggerVolume> candidates = worldHash.get(chunkHash);
+        
+        if (candidates == null) {
+            return result;
+        }
+        
+        // Check only volumes in the same chunk
+        for (TriggerVolume volume : candidates) {
             if (volume.contains(location)) {
                 result.add(volume);
             }
         }
+        
         return result;
+    }
+    
+    /**
+     * Calculates a hash for the chunk containing the location.
+     * 
+     * @param location The location
+     * @return The chunk hash
+     */
+    private long getChunkHash(Location location) {
+        int chunkX = (int) Math.floor(location.getX() / CHUNK_SIZE);
+        int chunkZ = (int) Math.floor(location.getZ() / CHUNK_SIZE);
+        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+    }
+    
+    /**
+     * Rebuilds the spatial hash for all volumes.
+     * Called after loading volumes or when volumes change.
+     */
+    private void rebuildSpatialHash() {
+        spatialHash.clear();
+        
+        for (TriggerVolume volume : volumes.values()) {
+            String worldName = volume.getWorldName();
+            Map<Long, List<TriggerVolume>> worldHash = spatialHash.computeIfAbsent(worldName, k -> new HashMap<>());
+            
+            // Calculate all chunks the volume spans
+            int minChunkX = (int) Math.floor(volume.getMinX() / CHUNK_SIZE);
+            int maxChunkX = (int) Math.floor((volume.getMaxX() + 1) / CHUNK_SIZE);
+            int minChunkZ = (int) Math.floor(volume.getMinZ() / CHUNK_SIZE);
+            int maxChunkZ = (int) Math.floor((volume.getMaxZ() + 1) / CHUNK_SIZE);
+            
+            // Add volume to all chunks it spans
+            for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+                for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                    long chunkHash = ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+                    worldHash.computeIfAbsent(chunkHash, k -> new ArrayList<>()).add(volume);
+                }
+            }
+        }
     }
 
     /**
@@ -383,5 +476,142 @@ public class TriggerVolumeManager {
     @Deprecated
     public boolean clearActions(String volumeName) {
         return clearAllActions(volumeName);
+    }
+
+    // ========== Group Management Methods ==========
+
+    /**
+     * Creates a new volume group.
+     * 
+     * @param groupName The name of the group
+     * @param volumeNames List of volume names to include (minimum 2)
+     * @return True if created successfully, false if group exists or less than 2 volumes
+     */
+    public boolean createGroup(String groupName, List<String> volumeNames) {
+        String key = groupName.toLowerCase();
+        if (groups.containsKey(key)) {
+            return false;
+        }
+        
+        if (volumeNames.size() < 2) {
+            return false;
+        }
+        
+        // Verify all volumes exist
+        for (String volumeName : volumeNames) {
+            if (!volumeExists(volumeName)) {
+                return false;
+            }
+        }
+        
+        groups.put(key, new VolumeGroup(groupName, volumeNames));
+        saveVolumes();
+        return true;
+    }
+
+    /**
+     * Deletes a volume group (does not delete the volumes).
+     * 
+     * @param groupName The name of the group to delete
+     * @return True if deleted successfully
+     */
+    public boolean deleteGroup(String groupName) {
+        String key = groupName.toLowerCase();
+        if (!groups.containsKey(key)) {
+            return false;
+        }
+        
+        groups.remove(key);
+        saveVolumes();
+        return true;
+    }
+
+    /**
+     * Gets a volume group by name.
+     * 
+     * @param groupName The name of the group
+     * @return The VolumeGroup, or null if not found
+     */
+    public VolumeGroup getGroup(String groupName) {
+        return groups.get(groupName.toLowerCase());
+    }
+
+    /**
+     * Checks if a group exists.
+     * 
+     * @param groupName The name to check
+     * @return True if the group exists
+     */
+    public boolean groupExists(String groupName) {
+        return groups.containsKey(groupName.toLowerCase());
+    }
+
+    /**
+     * Gets all group names.
+     * 
+     * @return Set of all group names
+     */
+    public Set<String> getGroupNames() {
+        return groups.keySet();
+    }
+
+    /**
+     * Checks if a name is a volume or a group.
+     * 
+     * @param name The name to check
+     * @return True if it's a volume, false if it's a group or doesn't exist
+     */
+    public boolean isVolume(String name) {
+        return volumeExists(name);
+    }
+
+    /**
+     * Clones all actions from one volume to another.
+     * 
+     * @param sourceVolumeName The source volume to copy from
+     * @param targetVolumeName The target volume to copy to
+     * @return True if cloned successfully
+     */
+    public boolean cloneActions(String sourceVolumeName, String targetVolumeName) {
+        TriggerVolume source = getVolume(sourceVolumeName);
+        TriggerVolume target = getVolume(targetVolumeName);
+        
+        if (source == null || target == null) {
+            return false;
+        }
+        
+        // Clear existing actions
+        target.clearAllActions();
+        
+        // Copy enter actions
+        for (TriggerAction action : source.getEnterActions()) {
+            target.addEnterAction(new TriggerAction(action.getType(), action.getValue()));
+        }
+        
+        // Copy leave actions
+        for (TriggerAction action : source.getLeaveActions()) {
+            target.addLeaveAction(new TriggerAction(action.getType(), action.getValue()));
+        }
+        
+        saveVolumes();
+        return true;
+    }
+
+    /**
+     * Gets all groups that contain a specific volume.
+     * 
+     * @param volumeName The volume to check
+     * @return List of group names containing this volume
+     */
+    public List<String> getGroupsForVolume(String volumeName) {
+        List<String> groupNames = new ArrayList<>();
+        
+        for (Map.Entry<String, VolumeGroup> entry : groups.entrySet()) {
+            if (entry.getValue().containsVolume(volumeName)) {
+                groupNames.add(entry.getValue().getName());
+            }
+        }
+        
+        return groupNames;
     }
 }

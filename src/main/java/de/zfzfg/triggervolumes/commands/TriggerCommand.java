@@ -5,6 +5,7 @@ import de.zfzfg.triggervolumes.models.ActionType;
 import de.zfzfg.triggervolumes.models.Selection;
 import de.zfzfg.triggervolumes.models.TriggerAction;
 import de.zfzfg.triggervolumes.models.TriggerVolume;
+import de.zfzfg.triggervolumes.models.VolumeGroup;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -13,6 +14,8 @@ import org.bukkit.entity.Player;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * Main command handler for the /trigger command and all its subcommands.
@@ -73,6 +76,14 @@ public class TriggerCommand implements CommandExecutor {
                 return handleVisualize(sender, args);
             case "hide":
                 return handleHide(sender, args);
+            case "clone":
+                return handleClone(sender, args);
+            case "copypaste":
+                return handleCopyPaste(sender, args);
+            case "creategroup":
+                return handleCreateGroup(sender, args);
+            case "deletegroup":
+                return handleDeleteGroup(sender, args);
             case "reload":
                 return handleReload(sender);
             case "help":
@@ -332,6 +343,13 @@ public class TriggerCommand implements CommandExecutor {
                 String.format("(%.1f, %.1f, %.1f)", volume.getMaxX(), volume.getMaxY(), volume.getMaxZ()));
         sender.sendMessage(ChatColor.YELLOW + "Volume: " + ChatColor.WHITE + 
                 String.format("%.0f blocks", volume.getVolume()));
+        
+        // Show groups this volume is in
+        List<String> groupNames = plugin.getVolumeManager().getGroupsForVolume(name);
+        if (!groupNames.isEmpty()) {
+            sender.sendMessage(ChatColor.YELLOW + "Groups: " + ChatColor.WHITE + 
+                    String.join(", ", groupNames));
+        }
 
         // Show enter actions
         if (volume.getEnterActions().isEmpty()) {
@@ -364,7 +382,7 @@ public class TriggerCommand implements CommandExecutor {
 
     /**
      * Handles the /trigger setaction <name> <enter|leave> <type> <value> command.
-     * Adds an action to a trigger volume.
+     * Adds an action to a trigger volume or group.
      * 
      * @param sender The command sender
      * @param args The command arguments
@@ -377,7 +395,7 @@ public class TriggerCommand implements CommandExecutor {
         }
 
         if (args.length < 5) {
-            sender.sendMessage(ChatColor.RED + "Usage: /trigger setaction <name> <enter|leave> <type> <value>");
+            sender.sendMessage(ChatColor.RED + "Usage: /trigger setaction <name|group> <enter|leave> <type> <value>");
             sender.sendMessage(ChatColor.GRAY + "Triggers: enter, leave");
             sender.sendMessage(ChatColor.GRAY + "Types: PLAYER_COMMAND, CONSOLE_COMMAND, MESSAGE, TELEPORT");
             return true;
@@ -387,7 +405,11 @@ public class TriggerCommand implements CommandExecutor {
         String triggerStr = args[2].toLowerCase();
         String typeStr = args[3].toUpperCase();
 
-        if (!plugin.getVolumeManager().volumeExists(name)) {
+        // Check if it's a group or volume
+        boolean isGroup = plugin.getVolumeManager().groupExists(name);
+        boolean isVolume = plugin.getVolumeManager().volumeExists(name);
+        
+        if (!isGroup && !isVolume) {
             sender.sendMessage(getMessage("volume-not-found").replace("%name%", name));
             return true;
         }
@@ -415,21 +437,41 @@ public class TriggerCommand implements CommandExecutor {
         String value = String.join(" ", Arrays.copyOfRange(args, 4, args.length));
 
         TriggerAction action = new TriggerAction(type, value);
-        boolean success;
         
-        if (isEnter) {
-            success = plugin.getVolumeManager().addEnterAction(name, action);
-        } else {
-            success = plugin.getVolumeManager().addLeaveAction(name, action);
-        }
-
-        if (success) {
+        if (isGroup) {
+            // Apply to all volumes in the group
+            VolumeGroup group = plugin.getVolumeManager().getGroup(name);
+            int successCount = 0;
+            
+            for (String volumeName : group.getVolumeNames()) {
+                boolean success;
+                if (isEnter) {
+                    success = plugin.getVolumeManager().addEnterAction(volumeName, action);
+                } else {
+                    success = plugin.getVolumeManager().addLeaveAction(volumeName, action);
+                }
+                if (success) successCount++;
+            }
+            
             String triggerName = isEnter ? "enter" : "leave";
-            sender.sendMessage(getMessage("action-set")
-                    .replace("%name%", name)
-                    .replace("%trigger%", triggerName));
+            sender.sendMessage(ChatColor.GREEN + "Added " + triggerName + " action to " + successCount + " volumes in group " + ChatColor.YELLOW + name);
         } else {
-            sender.sendMessage(ChatColor.RED + "Failed to set action!");
+            // Apply to single volume
+            boolean success;
+            if (isEnter) {
+                success = plugin.getVolumeManager().addEnterAction(name, action);
+            } else {
+                success = plugin.getVolumeManager().addLeaveAction(name, action);
+            }
+
+            if (success) {
+                String triggerName = isEnter ? "enter" : "leave";
+                sender.sendMessage(getMessage("action-set")
+                        .replace("%name%", name)
+                        .replace("%trigger%", triggerName));
+            } else {
+                sender.sendMessage(ChatColor.RED + "Failed to set action!");
+            }
         }
 
         return true;
@@ -437,7 +479,7 @@ public class TriggerCommand implements CommandExecutor {
 
     /**
      * Handles the /trigger clearactions <name> [enter|leave|all] command.
-     * Clears actions from a trigger volume.
+     * Clears actions from a trigger volume or group.
      * 
      * @param sender The command sender
      * @param args The command arguments
@@ -450,41 +492,74 @@ public class TriggerCommand implements CommandExecutor {
         }
 
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Usage: /trigger clearactions <name> [enter|leave|all]");
+            sender.sendMessage(ChatColor.RED + "Usage: /trigger clearactions <name|group> [enter|leave|all]");
             return true;
         }
 
         String name = args[1];
 
-        if (!plugin.getVolumeManager().volumeExists(name)) {
+        // Check if it's a group or volume
+        boolean isGroup = plugin.getVolumeManager().groupExists(name);
+        boolean isVolume = plugin.getVolumeManager().volumeExists(name);
+        
+        if (!isGroup && !isVolume) {
             sender.sendMessage(getMessage("volume-not-found").replace("%name%", name));
             return true;
         }
 
         String triggerType = args.length >= 3 ? args[2].toLowerCase() : "all";
-        boolean success;
-        String clearedType;
         
-        switch (triggerType) {
-            case "enter":
-                success = plugin.getVolumeManager().clearEnterActions(name);
-                clearedType = "enter";
-                break;
-            case "leave":
-                success = plugin.getVolumeManager().clearLeaveActions(name);
-                clearedType = "leave";
-                break;
-            case "all":
-            default:
-                success = plugin.getVolumeManager().clearAllActions(name);
-                clearedType = "all";
-                break;
-        }
-
-        if (success) {
-            sender.sendMessage(ChatColor.GREEN + "Cleared " + clearedType + " actions from volume " + ChatColor.YELLOW + name);
+        if (isGroup) {
+            // Apply to all volumes in the group
+            VolumeGroup group = plugin.getVolumeManager().getGroup(name);
+            int successCount = 0;
+            
+            for (String volumeName : group.getVolumeNames()) {
+                boolean success = false;
+                
+                switch (triggerType) {
+                    case "enter":
+                        success = plugin.getVolumeManager().clearEnterActions(volumeName);
+                        break;
+                    case "leave":
+                        success = plugin.getVolumeManager().clearLeaveActions(volumeName);
+                        break;
+                    case "all":
+                    default:
+                        success = plugin.getVolumeManager().clearAllActions(volumeName);
+                        break;
+                }
+                
+                if (success) successCount++;
+            }
+            
+            sender.sendMessage(ChatColor.GREEN + "Cleared " + triggerType + " actions from " + successCount + " volumes in group " + ChatColor.YELLOW + name);
         } else {
-            sender.sendMessage(ChatColor.RED + "Failed to clear actions!");
+            // Apply to single volume
+            boolean success;
+            String clearedType;
+            
+            switch (triggerType) {
+                case "enter":
+                    success = plugin.getVolumeManager().clearEnterActions(name);
+                    clearedType = "enter";
+                    break;
+                case "leave":
+                    success = plugin.getVolumeManager().clearLeaveActions(name);
+                    clearedType = "leave";
+                    break;
+                case "all":
+                default:
+                    success = plugin.getVolumeManager().clearAllActions(name);
+                    clearedType = "all";
+                    break;
+            }
+
+            if (success) {
+                sender.sendMessage(ChatColor.GREEN + "Cleared " + clearedType + " actions from volume " + ChatColor.YELLOW + name);
+            } else {
+                sender.sendMessage(ChatColor.RED + "Failed to clear actions!");
+            }
         }
 
         return true;
@@ -566,6 +641,252 @@ public class TriggerCommand implements CommandExecutor {
     }
 
     /**
+     * Handles the /trigger clone [sourceVolume] [targetName] command.
+     * Clones all actions from source volume to a new volume from selection.
+     * If sourceVolume is omitted, only creates volume from selection.
+     * If targetName is provided, uses it instead of auto-generated name.
+     * 
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if successful
+     */
+    private boolean handleClone(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(ChatColor.RED + "This command can only be used by players!");
+            return true;
+        }
+
+        if (!player.hasPermission("triggervolumes.admin")) {
+            player.sendMessage(getMessage("no-permission"));
+            return true;
+        }
+
+        Selection selection = plugin.getSelectionManager().getSelection(player);
+
+        if (selection == null || !selection.isComplete()) {
+            player.sendMessage(getMessage("selection-incomplete"));
+            return true;
+        }
+
+        // Check if source volume is provided
+        String sourceVolumeName = null;
+        String targetVolumeName = null;
+        
+        if (args.length >= 2) {
+            sourceVolumeName = args[1];
+            
+            if (!plugin.getVolumeManager().volumeExists(sourceVolumeName)) {
+                player.sendMessage(getMessage("volume-not-found").replace("%name%", sourceVolumeName));
+                return true;
+            }
+        }
+        
+        // Check if custom target name is provided
+        if (args.length >= 3) {
+            targetVolumeName = args[2];
+            
+            if (plugin.getVolumeManager().volumeExists(targetVolumeName)) {
+                player.sendMessage(getMessage("volume-already-exists-error").replace("%name%", targetVolumeName));
+                return true;
+            }
+        } else if (sourceVolumeName != null) {
+            // Generate a unique name for the cloned volume
+            targetVolumeName = sourceVolumeName + "_clone";
+            int counter = 1;
+            while (plugin.getVolumeManager().volumeExists(targetVolumeName)) {
+                targetVolumeName = sourceVolumeName + "_clone" + counter;
+                counter++;
+            }
+        } else {
+            // No source and no custom name - generate default name
+            targetVolumeName = "volume_1";
+            int counter = 1;
+            while (plugin.getVolumeManager().volumeExists(targetVolumeName)) {
+                counter++;
+                targetVolumeName = "volume_" + counter;
+            }
+        }
+
+        // Create the new volume
+        boolean created = plugin.getVolumeManager().createVolume(
+                targetVolumeName,
+                selection.getWorldName(),
+                selection.getMinX(), selection.getMinY(), selection.getMinZ(),
+                selection.getMaxX(), selection.getMaxY(), selection.getMaxZ()
+        );
+
+        if (!created) {
+            player.sendMessage(ChatColor.RED + "Failed to create target volume!");
+            return true;
+        }
+
+        // Clone actions if source volume was provided
+        if (sourceVolumeName != null) {
+            boolean cloned = plugin.getVolumeManager().cloneActions(sourceVolumeName, targetVolumeName);
+
+            if (cloned) {
+                TriggerVolume sourceVolume = plugin.getVolumeManager().getVolume(sourceVolumeName);
+                player.sendMessage(getMessage("volume-cloned")
+                        .replace("%source%", sourceVolumeName)
+                        .replace("%target%", targetVolumeName));
+                player.sendMessage(getMessage("actions-cloned")
+                        .replace("%enter%", String.valueOf(sourceVolume.getEnterActions().size()))
+                        .replace("%leave%", String.valueOf(sourceVolume.getLeaveActions().size())));
+            } else {
+                player.sendMessage(ChatColor.RED + "Failed to clone actions!");
+            }
+        } else {
+            player.sendMessage(getMessage("volume-created-from-selection").replace("%name%", targetVolumeName));
+        }
+
+        return true;
+    }
+
+    /**
+     * Handles the /trigger copypaste <copyVolume> <pasteVolume> command.
+     * Copies all actions from one volume to another without needing a selection.
+     * 
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if successful
+     */
+    private boolean handleCopyPaste(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("triggervolumes.admin")) {
+            sender.sendMessage(getMessage("no-permission"));
+            return true;
+        }
+
+        if (args.length < 3) {
+            sender.sendMessage(ChatColor.RED + "Usage: /trigger copypaste <copyVolume> <pasteVolume>");
+            sender.sendMessage(ChatColor.GRAY + "Copies all actions from copyVolume to pasteVolume.");
+            return true;
+        }
+
+        String copyVolumeName = args[1];
+        String pasteVolumeName = args[2];
+
+        if (!plugin.getVolumeManager().volumeExists(copyVolumeName)) {
+            sender.sendMessage(getMessage("volume-not-found").replace("%name%", copyVolumeName));
+            return true;
+        }
+
+        if (!plugin.getVolumeManager().volumeExists(pasteVolumeName)) {
+            sender.sendMessage(getMessage("volume-not-found").replace("%name%", pasteVolumeName));
+            return true;
+        }
+
+        boolean success = plugin.getVolumeManager().cloneActions(copyVolumeName, pasteVolumeName);
+
+        if (success) {
+            TriggerVolume copyVolume = plugin.getVolumeManager().getVolume(copyVolumeName);
+            sender.sendMessage(getMessage("actions-copied")
+                    .replace("%source%", copyVolumeName)
+                    .replace("%target%", pasteVolumeName));
+            sender.sendMessage(getMessage("actions-cloned")
+                    .replace("%enter%", String.valueOf(copyVolume.getEnterActions().size()))
+                    .replace("%leave%", String.valueOf(copyVolume.getLeaveActions().size())));
+        } else {
+            sender.sendMessage(ChatColor.RED + "Failed to copy actions!");
+        }
+
+        return true;
+    }
+
+    /**
+     * Handles the /trigger creategroup <groupName> <volume1> <volume2> ... command.
+     * Creates a group of volumes for batch operations.
+     * 
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if successful
+     */
+    private boolean handleCreateGroup(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("triggervolumes.admin")) {
+            sender.sendMessage(getMessage("no-permission"));
+            return true;
+        }
+
+        if (args.length < 4) {
+            sender.sendMessage(ChatColor.RED + "Usage: /trigger creategroup <groupName> <volume1> <volume2> [volume3...]");
+            sender.sendMessage(ChatColor.GRAY + "Minimum 2 volumes required.");
+            return true;
+        }
+
+        String groupName = args[1];
+
+        if (plugin.getVolumeManager().groupExists(groupName)) {
+            sender.sendMessage(ChatColor.RED + "Group " + ChatColor.YELLOW + groupName + ChatColor.RED + " already exists!");
+            return true;
+        }
+
+        // Collect volume names
+        List<String> volumeNames = new ArrayList<>();
+        for (int i = 2; i < args.length; i++) {
+            String volumeName = args[i];
+            
+            if (!plugin.getVolumeManager().volumeExists(volumeName)) {
+                sender.sendMessage(ChatColor.RED + "Volume " + ChatColor.YELLOW + volumeName + ChatColor.RED + " does not exist!");
+                return true;
+            }
+            
+            volumeNames.add(volumeName);
+        }
+
+        boolean success = plugin.getVolumeManager().createGroup(groupName, volumeNames);
+
+        if (success) {
+            sender.sendMessage(ChatColor.GREEN + "Created group " + ChatColor.YELLOW + groupName + 
+                    ChatColor.GREEN + " with " + volumeNames.size() + " volumes:");
+            for (String volumeName : volumeNames) {
+                sender.sendMessage(ChatColor.GRAY + "  - " + volumeName);
+            }
+        } else {
+            sender.sendMessage(ChatColor.RED + "Failed to create group! Make sure you have at least 2 volumes.");
+        }
+
+        return true;
+    }
+
+    /**
+     * Handles the /trigger deletegroup <groupName> command.
+     * Deletes a volume group (volumes remain).
+     * 
+     * @param sender The command sender
+     * @param args The command arguments
+     * @return True if successful
+     */
+    private boolean handleDeleteGroup(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("triggervolumes.admin")) {
+            sender.sendMessage(getMessage("no-permission"));
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(ChatColor.RED + "Usage: /trigger deletegroup <groupName>");
+            return true;
+        }
+
+        String groupName = args[1];
+
+        if (!plugin.getVolumeManager().groupExists(groupName)) {
+            sender.sendMessage(ChatColor.RED + "Group " + ChatColor.YELLOW + groupName + ChatColor.RED + " does not exist!");
+            return true;
+        }
+
+        VolumeGroup group = plugin.getVolumeManager().getGroup(groupName);
+        boolean success = plugin.getVolumeManager().deleteGroup(groupName);
+
+        if (success) {
+            sender.sendMessage(ChatColor.GREEN + "Deleted group " + ChatColor.YELLOW + groupName);
+            sender.sendMessage(ChatColor.GRAY + "The " + group.getVolumeNames().size() + " volumes in the group remain intact.");
+        } else {
+            sender.sendMessage(ChatColor.RED + "Failed to delete group!");
+        }
+
+        return true;
+    }
+
+    /**
      * Handles the /trigger reload command.
      * Reloads the plugin configuration and language files.
      * 
@@ -609,10 +930,14 @@ public class TriggerCommand implements CommandExecutor {
         sender.sendMessage(ChatColor.YELLOW + "/trigger create <name>" + ChatColor.GRAY + " - Create volume from selection");
         sender.sendMessage(ChatColor.YELLOW + "/trigger define <name> <x1> <y1> <z1> <x2> <y2> <z2>" + ChatColor.GRAY + " - Create with coordinates");
         sender.sendMessage(ChatColor.YELLOW + "/trigger delete <name>" + ChatColor.GRAY + " - Delete a volume");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger clone [sourceVolume] [targetName]" + ChatColor.GRAY + " - Clone volume or create from selection");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger copypaste <copyVolume> <pasteVolume>" + ChatColor.GRAY + " - Copy actions between volumes");
         sender.sendMessage(ChatColor.YELLOW + "/trigger list" + ChatColor.GRAY + " - List all volumes");
         sender.sendMessage(ChatColor.YELLOW + "/trigger info <name>" + ChatColor.GRAY + " - Show volume details");
-        sender.sendMessage(ChatColor.YELLOW + "/trigger setaction <name> <enter|leave> <type> <value>" + ChatColor.GRAY + " - Add action");
-        sender.sendMessage(ChatColor.YELLOW + "/trigger clearactions <name> [enter|leave|all]" + ChatColor.GRAY + " - Clear actions");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger setaction <name|group> <enter|leave> <type> <value>" + ChatColor.GRAY + " - Add action");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger clearactions <name|group> [enter|leave|all]" + ChatColor.GRAY + " - Clear actions");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger creategroup <groupName> <vol1> <vol2> ..." + ChatColor.GRAY + " - Create volume group");
+        sender.sendMessage(ChatColor.YELLOW + "/trigger deletegroup <groupName>" + ChatColor.GRAY + " - Delete volume group");
         sender.sendMessage(ChatColor.YELLOW + "/trigger visualize <name>" + ChatColor.GRAY + " - Show volume particles");
         sender.sendMessage(ChatColor.YELLOW + "/trigger hide <name>" + ChatColor.GRAY + " - Hide volume particles");
         sender.sendMessage(ChatColor.YELLOW + "/trigger reload" + ChatColor.GRAY + " - Reload plugin configuration");

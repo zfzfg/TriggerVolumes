@@ -23,7 +23,8 @@ public class TriggerTabCompleter implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = Arrays.asList(
             "tool", "create", "define", "delete", "list", "info",
-            "setaction", "clearactions", "visualize", "show", "hide", "reload", "help"
+            "setaction", "clearactions", "visualize", "show", "hide",
+            "clone", "copypaste", "creategroup", "deletegroup", "reload", "help"
     );
 
     private static final List<String> TRIGGER_TYPES = Arrays.asList("enter", "leave");
@@ -81,12 +82,42 @@ public class TriggerTabCompleter implements TabCompleter {
                 case "visualize":
                 case "show":
                 case "hide":
-                case "setaction":
-                case "clearactions":
                     // Complete with volume names
                     completions = plugin.getVolumeManager().getVolumeNames().stream()
                             .filter(s -> s.startsWith(partial))
                             .collect(Collectors.toList());
+                    break;
+                case "clone":
+                    // Complete with volume names for source (optional)
+                    completions = plugin.getVolumeManager().getVolumeNames().stream()
+                            .filter(s -> s.startsWith(partial))
+                            .collect(Collectors.toList());
+                    break;
+                case "copypaste":
+                    // Complete with volume names for copy source
+                    completions = plugin.getVolumeManager().getVolumeNames().stream()
+                            .filter(s -> s.startsWith(partial))
+                            .collect(Collectors.toList());
+                    break;
+                case "setaction":
+                case "clearactions":
+                    // Complete with volume names and group names
+                    completions.addAll(plugin.getVolumeManager().getVolumeNames().stream()
+                            .filter(s -> s.startsWith(partial))
+                            .collect(Collectors.toList()));
+                    completions.addAll(plugin.getVolumeManager().getGroupNames().stream()
+                            .filter(s -> s.startsWith(partial))
+                            .collect(Collectors.toList()));
+                    break;
+                case "deletegroup":
+                    // Complete with group names
+                    completions = plugin.getVolumeManager().getGroupNames().stream()
+                            .filter(s -> s.startsWith(partial))
+                            .collect(Collectors.toList());
+                    break;
+                case "creategroup":
+                    // Suggest a default name
+                    completions.add("<groupName>");
                     break;
                 case "define":
                     completions.add("<name>");
@@ -107,42 +138,62 @@ public class TriggerTabCompleter implements TabCompleter {
                 completions = CLEAR_TYPES.stream()
                         .filter(s -> s.startsWith(partial))
                         .collect(Collectors.toList());
+            } else if (subCommand.equals("clone")) {
+                // Complete with custom target name (optional)
+                completions.add("<targetName>");
+            } else if (subCommand.equals("copypaste")) {
+                // Complete with volume names for paste target
+                String partial = args[2].toLowerCase();
+                completions = plugin.getVolumeManager().getVolumeNames().stream()
+                        .filter(s -> s.startsWith(partial))
+                        .collect(Collectors.toList());
+            } else if (subCommand.equals("creategroup")) {
+                // Complete with volume names for first volume
+                String partial = args[2].toLowerCase();
+                completions = plugin.getVolumeManager().getVolumeNames().stream()
+                        .filter(s -> s.startsWith(partial))
+                        .collect(Collectors.toList());
             } else if (subCommand.equals("define")) {
                 completions.add("<x1>");
             }
-        } else if (args.length == 4) {
+        } else if (args.length >= 4) {
             String subCommand = args[0].toLowerCase();
 
-            if (subCommand.equals("setaction")) {
+            if (subCommand.equals("setaction") && args.length == 4) {
                 // Complete with action types
                 String partial = args[3].toUpperCase();
                 completions = ACTION_TYPES.stream()
                         .filter(s -> s.startsWith(partial))
                         .collect(Collectors.toList());
-            } else if (subCommand.equals("define")) {
-                completions.add("<y1>");
-            }
-        } else if (args.length == 5) {
-            String subCommand = args[0].toLowerCase();
-
-            if (subCommand.equals("setaction")) {
+            } else if (subCommand.equals("setaction") && args.length == 5) {
                 // Suggest value based on action type
                 String actionType = args[3].toUpperCase();
                 completions = getActionValueSuggestions(actionType);
+            } else if (subCommand.equals("creategroup") && args.length >= 4) {
+                // Complete with additional volume names
+                String partial = args[args.length - 1].toLowerCase();
+                completions = plugin.getVolumeManager().getVolumeNames().stream()
+                        .filter(s -> s.startsWith(partial))
+                        .filter(s -> !Arrays.asList(args).subList(2, args.length - 1).contains(s))
+                        .collect(Collectors.toList());
             } else if (subCommand.equals("define")) {
-                completions.add("<z1>");
-            }
-        } else if (args.length >= 6 && args.length <= 8 && args[0].equalsIgnoreCase("define")) {
-            switch (args.length) {
-                case 6:
-                    completions.add("<x2>");
-                    break;
-                case 7:
-                    completions.add("<y2>");
-                    break;
-                case 8:
-                    completions.add("<z2>");
-                    break;
+                switch (args.length) {
+                    case 4:
+                        completions.add("<y1>");
+                        break;
+                    case 5:
+                        completions.add("<z1>");
+                        break;
+                    case 6:
+                        completions.add("<x2>");
+                        break;
+                    case 7:
+                        completions.add("<y2>");
+                        break;
+                    case 8:
+                        completions.add("<z2>");
+                        break;
+                }
             }
         }
 
